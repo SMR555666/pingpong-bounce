@@ -3,11 +3,9 @@
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path, PurePosixPath
 import shutil
 import stat
-import subprocess
 import tempfile
 import zipfile
 
@@ -25,8 +23,8 @@ def excluded(path):
     if len(parts) > 1 and parts[0] in TASKS:
         if parts[1] == "public_data":
             return True
-        if len(parts) >= 3 and parts[1] == "participant":
-            return parts[2] in ("solution.py", "weights", "configs")
+        if parts[1] == "participant":
+            return True
     return False
 
 
@@ -115,37 +113,12 @@ def check():
     print("框架文件与首次导入版本一致（本地辅助校验，不替代官方自检）。")
 
 
-def run_public(output):
-    check()
-    root = ROOT / "participant"
-    if root.resolve() != Path("/participant").resolve():
-        raise ValueError("联合入口依赖 /participant 绝对路径；请在平台环境或将工程挂载到容器 /participant 后运行。")
-    input_dir = root / "input"
-    input_dir.mkdir(exist_ok=True)
-    for task in TASKS:
-        source = root / task / "public_data"
-        if not source.is_dir() or not any(source.iterdir()):
-            raise ValueError(f"缺少公开验证数据：{source}")
-        link = input_dir / task
-        if os.path.lexists(link):
-            if not link.is_symlink() or link.resolve() != source.resolve():
-                raise ValueError(f"输入位置已被占用：{link}")
-        else:
-            link.symlink_to(Path("..") / task / "public_data", target_is_directory=True)
-    output = output.resolve()
-    if output.exists() and (not output.is_dir() or any(output.iterdir())):
-        raise ValueError(f"输出路径非空，请指定新目录：{output}")
-    subprocess.run(["bash", "run_all.sh", str(input_dir), str(output)], cwd=root, check=True)
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     command = commands.add_parser("import", help="原样导入官方 participant.zip，拒绝覆盖")
     command.add_argument("archive", type=Path)
     commands.add_parser("check", help="校验官方框架是否被改动")
-    command = commands.add_parser("run", help="建立验证集软链接并调用官方 run_all.sh（Linux）")
-    command.add_argument("--output", type=Path, default=ROOT / "outputs" / "public")
     args = parser.parse_args()
     try:
         if args.command == "import":
@@ -153,8 +126,8 @@ def main():
         elif args.command == "check":
             check()
         else:
-            run_public(args.output)
-    except (ValueError, OSError, zipfile.BadZipFile, subprocess.CalledProcessError) as exc:
+            check()
+    except (ValueError, OSError, zipfile.BadZipFile) as exc:
         parser.exit(1, f"错误：{exc}\n")
 
 

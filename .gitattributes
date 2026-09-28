@@ -1,0 +1,2 @@
+# 官方文件保持原始字节，避免 checkout 的换行转换改变框架校验值。
+participant/** -text

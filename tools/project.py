@@ -61,14 +61,23 @@ def import_official(archive):
     with tempfile.TemporaryDirectory(prefix="official-", dir=ROOT) as tmp:
         stage = Path(tmp)
         with zipfile.ZipFile(archive) as package:
+            names = {item.filename for item in package.infolist()}
+            prefix = (
+                ("participant", "participant")
+                if "participant/participant/run_all.sh" in names
+                else ("participant",)
+            )
             seen = set()
             for item in package.infolist():
                 rel = PurePosixPath(item.filename)
                 if not rel.parts or rel.parts[0] == "__MACOSX":
                     continue
                 if (rel.is_absolute() or ".." in rel.parts or "\\" in item.filename
-                        or any(":" in p for p in rel.parts) or rel.parts[0] != "participant"):
+                        or any(":" in p for p in rel.parts) or rel.parts[:len(prefix)] != prefix):
+                    if item.is_dir() and rel.parts == ("participant",) and len(prefix) == 2:
+                        continue
                     raise ValueError(f"不符合 participant/ 根目录约定的路径：{item.filename}")
+                rel = PurePosixPath("participant", *rel.parts[len(prefix):])
                 kind = stat.S_IFMT(item.external_attr >> 16)
                 if kind not in (0, stat.S_IFREG, stat.S_IFDIR):
                     raise ValueError(f"压缩包包含非普通文件：{item.filename}")
@@ -109,6 +118,8 @@ def check():
 def run_public(output):
     check()
     root = ROOT / "participant"
+    if root.resolve() != Path("/participant").resolve():
+        raise ValueError("联合入口依赖 /participant 绝对路径；请在平台环境或将工程挂载到容器 /participant 后运行。")
     input_dir = root / "input"
     input_dir.mkdir(exist_ok=True)
     for task in TASKS:

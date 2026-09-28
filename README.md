@@ -2,16 +2,16 @@
 
 乒乓球多视角落点检测比赛项目。输入比赛视频，输出每次触台的帧号和画面像素坐标。默认开发乒乓球主赛题，篮球附加题保留官方参考实现。
 
-**当前状态：仓库骨架。尚未导入官方 `participant.zip`，未实现新模型，未进行真实视频推理或计分。** 本项目不猜测官方 `Solution` 方法签名，导入后以官方示例为准。
+**当前状态：已导入官方 `participant.zip` 和参考实现，尚未训练新模型或在 GPU 环境跑完整验证。** 官方 `Solution` 实现四个生命周期方法：`prepare`、`reset`、`process_frame`、`finish_video`。
 
 ## 项目结构
 
 | 路径 | 用途 |
 | --- | --- |
-| `participant/` | 导入后生成的完整官方工程，保留原目录结构 |
+| `participant/` | 官方工程；框架和示例代码入库，公开验证视频不入库 |
 | `participant/pingpang/participant/solution.py` | 乒乓球算法入口，使用官方 `Solution` 接口 |
 | `participant/pingpang/participant/configs/` | 模型和推理配置 |
-| `participant/pingpang/participant/weights/` | 本地模型权重，不提交 Git |
+| `participant/pingpang/participant/weights/` | 官方 `ball.onnx` 基线权重随仓库提交 |
 | `participant/basketball/participant/` | 篮球官方基线；暂不改动 |
 | `tools/project.py` | 导入、框架字节校验和联合自测 |
 | `docs/competition.md` | 提供的赛题原文 |
@@ -29,9 +29,9 @@ python tools/project.py import /path/to/participant.zip
 python tools/project.py check
 ```
 
-ZIP 必须包含赛题描述的外层 `participant/`，同时包含两个任务。导入保留官方文件内容和参考实现，拒绝覆盖已有工程。该命令会解压验证视频，请预留空间。
+ZIP 支持单层 `participant/`，也支持本次官方包的双层 `participant/participant/` 包装。导入保留官方文件内容和参考实现，拒绝覆盖已有工程。已导入的仓库无需再次运行此命令。
 
-导入后的修改范围：各任务内层的 `solution.py`、`weights/`、`configs/`。不要修改 `core/`、`run.py`、`validate.py`、联合入口或官方自检脚本。`check` 仅对首次导入版本做本地字节校验，不证明包来源，也不替代组委会完整性检查。不要为了让校验通过而重建或修改哈希记录。
+算法修改放在各任务内层 `participant/` 代码区；优先改 `solution.py`，模型和配置放 `weights/`、`configs/`。不要修改 `core/`、`run.py`、`validate.py`、联合入口或官方自检脚本。`check` 仅对首次导入版本做本地字节校验，不证明包来源，也不替代组委会完整性检查。不要为了让校验通过而重建或修改哈希记录。
 
 ## 2. 环境和数据
 
@@ -39,24 +39,24 @@ ZIP 必须包含赛题描述的外层 `participant/`，同时包含两个任务�
 
 - 训练集：下载 `pp_train_data.zip`，在本地 `data/` 下管理；实际标注格式在取得数据后确认。
 - 验证集：导入工程后位于两个任务各自的 `public_data/`。
-- 权重：放到对应任务内层的 `weights/`，并在 `configs/` 中记录相对路径。
-- 数据、视频、模型权重、推理输出和镜像均已加入 Git 忽略规则；Docker 构建会包含本地权重。
-- 在另一台机器克隆后，需从官方包恢复 `public_data/` 并另行恢复权重；已有工程不要重复运行 import。
+- 官方参考权重：`pingpang/participant/weights/ball.onnx` 和 `basketball/participant/weights/player.onnx` 已随代码提交，以便克隆后可直接构建基线镜像。新增的大模型请评估仓库大小后再决定存储方式。
+- 公开验证数据和视频、训练数据、推理输出及镜像不入 Git。需从官方包恢复各任务的 `public_data/` 后才可做本地验证。
 
 ## 3. 开发和自测
 
-先阅读官方 `solution.py` 与自检脚本，按真实接口开发。若只做乒乓球，篮球代码原样保留。
+官方基线已包含球检测、落点判定及篮球跟踪的代码。`pingpang/participant/solution.py` 的四个方法按官方 `core/types.py` 接口实现。`ball.onnx` 在 `prepare` 中转换为 TensorRT 引擎。可先看 `participant/README.md` 和两个任务的 `scripts/check_solution.py`。
 
-在 Linux / 官方容器环境执行：
+静态校验（普通 Python 环境即可）：
 
 ```bash
 python tools/project.py check
-python tools/project.py run --output outputs/baseline
+python participant/pingpang/integrity.py --verify
+python participant/basketball/integrity.py --verify
 ```
 
-`run` 创建 `participant/input/pingpang` 与 `basketball` 的验证集软链接，执行原始 `run_all.sh`。输出目录非空时拒绝覆盖；下一次实验指定新目录。具体输出子目录由官方入口决定，每个任务应有 `predictions.jsonl`、`run_status.json`、`run.log`。失败时查看日志和官方脚本说明。
+完整推理须在官方 GPU 环境进行。确保官方包的两套 `public_data/` 已恢复，工程映射到容器内 `/participant`，并挂载验证数据到 `/participant/input/<task>`。参考命令见下一节。平台里可执行 `python /participant/tools/project.py run --output /participant/output`（若工具目录也在容器内），或者直接调用 `/participant/run_all.sh /participant/input /participant/output`。
 
-取得官方包后，还应根据其帮助说明执行 `check_env.py`、`check_solution.py`；此处不假定它们的所在位置或参数。
+快速自检入口位于 `participant/<task>/scripts/check_env.py` 和 `check_solution.py`，具体参数参看 `--help`。输出的 `run.log` 与 `run_status.json` 应同时检查。**这里的字节校验通过只说明框架文件没有改变，不代表模型已跑通。**
 
 乒乓球预测格式（由官方框架负责最终输出）：
 
@@ -80,7 +80,7 @@ docker build --build-arg BASE_IMAGE=OFFICIAL_IMAGE_NAME:TAG -t sport-vision-subm
 
 Dockerfile 不安装或升级基础组件。正式评测没有在线安装环节；如方案新增其他依赖，需提前审核兼容性并打入镜像。验证数据不进入镜像。构建前确认本地模型权重齐全。
 
-可使用验证集模拟挂载（先运行第 3 节建立输入链接；将两个数据目录分别挂载，避免容器内软链接失效）：
+可使用验证集模拟挂载（从官方包恢复两个 `public_data/` 后）：
 
 ```bash
 mkdir -p outputs/docker-public
@@ -95,20 +95,24 @@ docker save sport-vision-submit:latest -o sport-vision-submit.tar
 
 赛题限制：最多两张 4090、单卡显存 <24 GB、每任务全程 <7200 秒、新增镜像空间 <50 GB、输出 <1 GB。正式提交前仍需在官方环境完整跑通两任务。
 
-## 5. 团队协作
+## 5. 放到 GitHub
 
-仓库：`SMR555666/pingpong-bounce`（私有）。
+建议先建团队私有仓库，确认官方代码和数据的发布授权后再决定公开。本项目没有为官方代码擅自添加开源许可证。
+
+创建空仓库后，在本目录执行；将远端地址替换为你们的实际仓库：
 
 ```bash
-git clone https://github.com/SMR555666/pingpong-bounce.git
-cd pingpong-bounce
-git switch -c baseline
+git init -b main
+git add .
+git status --short
+git commit -m "Initialize competition project"
+git remote add origin https://github.com/YOUR_ACCOUNT/pingpong-bounce.git
+git push -u origin main
 ```
 
-导入官方包后，提交代码与框架校验记录；数据、模型权重和输出在本地管理。提交前用 `git status --short` 检查暂存区。后续按功能建立实验分支，通过 Pull Request 合并。本项目没有为官方代码擅自添加开源许可证。
+提交前确认暂存区没有数据、私密配置或大文件。后续可在 `baseline`、`ball-detector` 等分支进行实验，主分支保留能在官方环境运行的版本。
 
 ## 接下来
 
-1. 提供并导入官方 `participant.zip`，确认实际 `Solution` 接口和运行依赖。
-2. 在官方环境跑通原始基线，记录各视角 F1 和 FPS。
-3. 仅在参赛代码区迭代球检测、轨迹与触台事件判断；训练流程等取得标注样例后再添加。
+1. 在官方 GPU 环境恢复公开验证集并跑通原始基线，记录各视角 F1 和 FPS。
+2. 在参赛代码区迭代球检测、轨迹与触台事件判断；训练流程取得训练集标注后再添加。

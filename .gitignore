@@ -27,3 +27,11 @@ __pycache__/
 /participant/*/participant/weights/*
 !/participant/*/participant/weights/.gitkeep
 !/participant/*/participant/weights/README.md
+
+# Include the official baseline weights and public validation datasets.
+!/participant/pingpang/participant/weights/ball.onnx
+!/participant/basketball/participant/weights/player.onnx
+!/participant/pingpang/public_data/
+!/participant/pingpang/public_data/**
+!/participant/basketball/public_data/
+!/participant/basketball/public_data/**

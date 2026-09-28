@@ -8,10 +8,10 @@
 
 | 路径 | 用途 |
 | --- | --- |
-| `participant/` | 官方工程；框架和示例代码入库，公开验证视频不入库 |
+| `participant/` | 官方工程；框架、示例代码、官方参考权重和公开验证集均已入库 |
 | `participant/pingpang/participant/solution.py` | 乒乓球算法入口，使用官方 `Solution` 接口 |
 | `participant/pingpang/participant/configs/` | 模型和推理配置 |
-| `participant/pingpang/participant/weights/` | 放本地 `ball.onnx`，权重不随代码仓分发 |
+| `participant/pingpang/participant/weights/` | 已包含官方参考权重 `ball.onnx` |
 | `participant/basketball/participant/` | 篮球官方基线；暂不改动 |
 | `tools/project.py` | 导入与框架字节校验 |
 | `docs/competition.md` | 提供的赛题原文 |
@@ -39,8 +39,8 @@ ZIP 支持单层 `participant/`，也支持本次官方包的双层 `participant
 
 - 训练集：下载 `pp_train_data.zip`，在本地 `data/` 下管理；实际标注格式在取得数据后确认。
 - 验证集：导入工程后位于两个任务各自的 `public_data/`。
-- 官方参考权重：从官方包把 `ball.onnx`、`player.onnx` 恢复到对应任务内层的 `participant/weights/`。官方工程的权重说明要求模型不随代码仓分发。
-- 公开验证集：从官方包恢复 `participant/<task>/public_data/`，包含 manifest、GT 和视频。训练数据、权重、验证集、推理输出与镜像都不入 Git。
+- 官方参考权重：`ball.onnx`、`player.onnx` 已包含在对应任务内层的 `participant/weights/`，克隆本私有仓库即可获取。
+- 公开验证集：两个任务的 `participant/<task>/public_data/` 均已入库，包含 manifest、GT 和共 17 个视频。训练数据、新增训练权重、推理输出与镜像仍不入 Git。
 
 ## 3. 开发和自测
 
@@ -54,7 +54,7 @@ python participant/pingpang/integrity.py --verify
 python participant/basketball/integrity.py --verify
 ```
 
-完整推理须在官方 GPU 环境进行。确保官方包的两个权重和两套 `public_data/` 已恢复，工程映射到容器内 `/participant`，并挂载验证数据到 `/participant/input/<task>`。参考命令见下一节。平台里直接调用 `/participant/run_all.sh /participant/input /participant/output`。
+完整推理须在官方 GPU 环境进行。仓库已包含官方包的两个权重和两套 `public_data/`；确保文件下载完整，工程映射到容器内 `/participant`，并挂载验证数据到 `/participant/input/<task>`。参考命令见下一节。平台里直接调用 `/participant/run_all.sh /participant/input /participant/output`。
 
 快速自检入口位于 `participant/<task>/scripts/check_env.py` 和 `check_solution.py`，具体参数参看 `--help`。输出的 `run.log` 与 `run_status.json` 应同时检查。**这里的字节校验通过只说明框架文件没有改变，不代表模型已跑通。**
 
@@ -80,7 +80,7 @@ docker build --build-arg BASE_IMAGE=OFFICIAL_IMAGE_NAME:TAG -t sport-vision-subm
 
 Dockerfile 不安装或升级基础组件。正式评测没有在线安装环节；如方案新增其他依赖，需提前审核兼容性并打入镜像。验证数据不进入镜像。构建前确认本地模型权重齐全。
 
-可使用验证集模拟挂载（从官方包恢复两个 `public_data/` 后）：
+可使用验证集模拟挂载（克隆仓库后即可使用）：
 
 ```bash
 mkdir -p outputs/docker-public
@@ -104,9 +104,9 @@ git clone https://github.com/SMR555666/pingpong-bounce.git
 cd pingpong-bounce
 ```
 
-代码和框架校验记录已入库；参赛者从官方包在本机补齐权重与验证数据。提交前运行 `git status --short`，检查暂存区。后续按功能建立实验分支并通过 Pull Request 合并。本项目没有为官方代码添加开源许可证。
+代码、框架校验记录、两个官方 ONNX 权重和两套公开验证集均已入库。提交前运行 `git status --short`，检查暂存区。后续按功能建立实验分支并通过 Pull Request 合并。本项目没有为官方代码添加开源许可证。
 
 ## 接下来
 
-1. 从官方包恢复两个模型权重和公开验证集，在官方 GPU 环境跑通原始基线，记录各视角 F1 和 FPS。
+1. 使用仓库自带的两个模型权重和公开验证集，在官方 GPU 环境跑通原始基线，记录各视角 F1 和 FPS。
 2. 在参赛代码区迭代球检测、轨迹与触台事件判断；训练流程取得训练集标注后再添加。

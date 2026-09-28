@@ -13,7 +13,7 @@
 | `participant/pingpang/participant/configs/` | 模型和推理配置 |
 | `participant/pingpang/participant/weights/` | 放本地 `ball.onnx`，权重不随代码仓分发 |
 | `participant/basketball/participant/` | 篮球官方基线；暂不改动 |
-| `tools/project.py` | 导入、框架字节校验和联合自测 |
+| `tools/project.py` | 导入与框架字节校验 |
 | `docs/competition.md` | 提供的赛题原文 |
 | `docs/framework-sha256.json` | 首次导入时自动生成的框架文件哈希，随代码提交 |
 | `Dockerfile` | 基于官方镜像构建提交镜像 |
